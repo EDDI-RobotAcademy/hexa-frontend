@@ -43,8 +43,8 @@ export default function Header() {
               <div className="px-4 py-2 text-sm text-gray-400">로딩중...</div>
             ) : isLoggedIn ? (
               <>
-                <span className="px-4 py-2 text-sm text-gray-600">
-                  {user?.name || user?.email}
+                <span className="px-4 py-2 rounded-full border border-pink-300 text-black-600 text-sm font-medium transition">
+                  {user?.name || user?.email} 님
                 </span>
                 <button
                   onClick={handleLogout}
