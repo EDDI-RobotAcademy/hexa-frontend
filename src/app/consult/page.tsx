@@ -1,27 +1,62 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { startConsult, sendConsultMessage } from '@/lib/api';
 
 export default function ConsultPage() {
   const [messages, setMessages] = useState<{ role: string; content: string }[]>([]);
   const [input, setInput] = useState('');
   const [isStarted, setIsStarted] = useState(false);
+  const [sessionId, setSessionId] = useState<string>('');
+  const [remainingTurns, setRemainingTurns] = useState<number>(5);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string>('');
+  const [isCompleted, setIsCompleted] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const handleStart = () => {
-    setIsStarted(true);
-    setMessages([
-      { role: 'assistant', content: '안녕! INTJ인 너와 대화하게 되어 반가워. 오늘 어떤 관계 고민이 있어?' }
-    ]);
+  // 메시지가 추가될 때마다 자동으로 스크롤
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isLoading]);
+
+  const handleStart = async () => {
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const response = await startConsult();
+      setSessionId(response.session_id);
+      setRemainingTurns(response.remaining_turns);
+      setIsStarted(true);
+      setMessages([
+        { role: 'assistant', content: response.initial_message }
+      ]);
+    } catch (err: any) {
+      setError(err.message || '상담 시작 중 오류가 발생했습니다.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleSend = () => {
-    if (!input.trim()) return;
-    setMessages([...messages, { role: 'user', content: input }]);
+  const handleSend = async () => {
+    if (!input.trim() || isLoading || isCompleted) return;
+
+    const userMessage = input.trim();
     setInput('');
-    // TODO: API 연동
-    setTimeout(() => {
-      setMessages(prev => [...prev, { role: 'assistant', content: '네 이야기를 듣고 있어. 더 자세히 말해줄 수 있어?' }]);
-    }, 1000);
+    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const response = await sendConsultMessage(sessionId, userMessage);
+      setMessages(prev => [...prev, { role: 'assistant', content: response.ai_response }]);
+      setRemainingTurns(response.remaining_turns);
+      setIsCompleted(response.is_completed);
+    } catch (err: any) {
+      setError(err.message || '메시지 전송 중 오류가 발생했습니다.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (!isStarted) {
@@ -35,11 +70,17 @@ export default function ConsultPage() {
             <br />
             상담이 끝나면 맞춤형 솔루션을 제공해드려요!
           </p>
+          {error && (
+            <div className="mb-4 p-4 bg-red-100 text-red-600 rounded-lg">
+              {error}
+            </div>
+          )}
           <button
             onClick={handleStart}
-            className="cursor-pointer px-8 py-4 bg-gradient-to-r from-pink-400 to-purple-400 text-white rounded-full font-semibold shadow-lg hover:shadow-xl hover:scale-105 transition-all"
+            disabled={isLoading}
+            className="cursor-pointer px-8 py-4 bg-gradient-to-r from-pink-400 to-purple-400 text-white rounded-full font-semibold shadow-lg hover:shadow-xl hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            상담 시작하기
+            {isLoading ? '시작 중...' : '상담 시작하기'}
           </button>
         </div>
       </div>
@@ -52,7 +93,7 @@ export default function ConsultPage() {
         {/* 헤더 */}
         <div className="bg-gradient-to-r from-pink-400 to-purple-400 text-white p-4">
           <h1 className="font-bold">MBTI 상담</h1>
-          <p className="text-sm text-white/80">남은 턴: 4/5</p>
+          <p className="text-sm text-white/80">남은 턴: {remainingTurns}/5</p>
         </div>
 
         {/* 메시지 영역 */}
@@ -73,7 +114,33 @@ export default function ConsultPage() {
               </div>
             </div>
           ))}
+          {isLoading && (
+            <div className="flex justify-start">
+              <div className="max-w-[80%] px-4 py-3 rounded-2xl bg-gray-100 text-gray-700 rounded-bl-sm">
+                <div className="flex gap-1">
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100"></div>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200"></div>
+                </div>
+              </div>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
         </div>
+
+        {/* 에러 메시지 */}
+        {error && (
+          <div className="px-4 py-2 bg-red-50 border-t border-red-200">
+            <p className="text-sm text-red-600">{error}</p>
+          </div>
+        )}
+
+        {/* 완료 메시지 */}
+        {isCompleted && (
+          <div className="px-4 py-2 bg-green-50 border-t border-green-200">
+            <p className="text-sm text-green-600">상담이 완료되었습니다. 분석 결과를 확인해주세요!</p>
+          </div>
+        )}
 
         {/* 입력 영역 */}
         <div className="border-t p-4">
@@ -82,15 +149,17 @@ export default function ConsultPage() {
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-              placeholder="고민을 말해주세요..."
-              className="flex-1 px-4 py-3 bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-pink-300"
+              onKeyDown={(e) => e.key === 'Enter' && !isLoading && !isCompleted && handleSend()}
+              placeholder={isCompleted ? "상담이 완료되었습니다" : "고민을 말해주세요..."}
+              disabled={isLoading || isCompleted}
+              className="flex-1 px-4 py-3 bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-pink-300 disabled:opacity-50 disabled:cursor-not-allowed"
             />
             <button
               onClick={handleSend}
-              className="px-6 py-3 bg-pink-400 text-white rounded-full font-medium hover:bg-pink-500 transition"
+              disabled={isLoading || isCompleted || !input.trim()}
+              className="px-6 py-3 bg-pink-400 text-white rounded-full font-medium hover:bg-pink-500 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              전송
+              {isLoading ? '전송 중...' : '전송'}
             </button>
           </div>
         </div>
