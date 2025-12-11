@@ -20,18 +20,30 @@ export async function apiFetch<T>(
   options?: RequestInit
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
-  
+
+  // body가 있는 경우에만 Content-Type 헤더 추가
+  const headers: HeadersInit = {
+    ...options?.headers,
+  };
+
+  if (options?.body) {
+    headers['Content-Type'] = 'application/json';
+  }
+
   const response = await fetch(url, {
     ...options,
     credentials: 'include', // 쿠키 포함
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
+    headers,
   });
 
   if (!response.ok) {
-    throw new Error(`API Error: ${response.statusText}`);
+    const errorDetails = {
+      status: response.status,
+      statusText: response.statusText,
+      url: url,
+    };
+    console.error('API Error:', errorDetails);
+    throw new Error(`API Error: ${response.statusText} (${response.status}) - ${endpoint}`);
   }
 
   const contentType = response.headers.get('content-type');
@@ -116,6 +128,44 @@ export async function updateProfile(
     method: 'PUT',
     headers: sessionId ? { Authorization: `Bearer ${sessionId}` } : undefined,
     body: JSON.stringify(data),
+  });
+}
+
+/**
+ * MBTI 상담 세션 시작
+ */
+export interface StartConsultResponse {
+  session_id: string;
+  initial_message: string;
+  remaining_turns: number;
+}
+
+export async function startConsult(): Promise<StartConsultResponse> {
+  return apiFetch<StartConsultResponse>('/consult/start', {
+    method: 'POST',
+  });
+}
+
+/**
+ * 상담 메시지 전송
+ */
+export interface SendMessageRequest {
+  content: string;
+}
+
+export interface SendMessageResponse {
+  ai_response: string;
+  remaining_turns: number;
+  is_completed: boolean;
+}
+
+export async function sendConsultMessage(
+  sessionId: string,
+  content: string
+): Promise<SendMessageResponse> {
+  return apiFetch<SendMessageResponse>(`/consult/${sessionId}/message`, {
+    method: 'POST',
+    body: JSON.stringify({ content }),
   });
 }
 
