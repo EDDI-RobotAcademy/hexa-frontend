@@ -5,18 +5,26 @@ import { useRouter } from 'next/navigation';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { updateProfile, type Gender } from '@/lib/api';
 
-const mbtiTypes = [
-  'INTJ', 'INTP', 'ENTJ', 'ENTP',
-  'INFJ', 'INFP', 'ENFJ', 'ENFP',
-  'ISTJ', 'ISFJ', 'ESTJ', 'ESFJ',
-  'ISTP', 'ISFP', 'ESTP', 'ESFP',
+const mbtiPairs = [
+  { options: ['E', 'I'], labels: ['외향', '내향'] },
+  { options: ['S', 'N'], labels: ['감각', '직관'] },
+  { options: ['T', 'F'], labels: ['사고', '감정'] },
+  { options: ['J', 'P'], labels: ['판단', '인식'] },
 ];
 
 export default function ProfilePage() {
   const router = useRouter();
-  const [mbti, setMbti] = useState('');
+  const [mbtiSelections, setMbtiSelections] = useState<(string | null)[]>([null, null, null, null]);
   const [gender, setGender] = useState<Gender | ''>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const mbti = mbtiSelections.every(s => s !== null) ? mbtiSelections.join('') : '';
+
+  const handleMbtiSelect = (index: number, value: string) => {
+    const newSelections = [...mbtiSelections];
+    newSelections[index] = value;
+    setMbtiSelections(newSelections);
+  };
 
   const handleSubmit = async () => {
     if (!mbti || !gender) {
@@ -49,22 +57,27 @@ export default function ProfilePage() {
 
           <div className="space-y-4">
             <label className="block text-sm font-medium text-gray-600">
-              MBTI (4-letter)
+              MBTI
             </label>
-            <div className="grid grid-cols-4 gap-3">
-              {mbtiTypes.map((type) => (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() => setMbti(type)}
-                  className={`cursor-pointer px-4 py-3 rounded-xl font-semibold text-sm transition ${
-                    mbti === type
-                      ? 'bg-gradient-to-r from-pink-400 to-purple-400 text-white shadow-lg scale-105'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {type}
-                </button>
+            <div className="space-y-3">
+              {mbtiPairs.map((pair, index) => (
+                <div key={index} className="flex gap-3">
+                  {pair.options.map((option, optionIndex) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => handleMbtiSelect(index, option)}
+                      className={`cursor-pointer flex-1 py-4 rounded-xl font-semibold transition ${
+                        mbtiSelections[index] === option
+                          ? 'bg-gradient-to-r from-pink-400 to-purple-400 text-white shadow-lg'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      <div className="text-lg">{option}</div>
+                      <div className="text-xs opacity-70">{pair.labels[optionIndex]}</div>
+                    </button>
+                  ))}
+                </div>
               ))}
             </div>
             {mbti && (

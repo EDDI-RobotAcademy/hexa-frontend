@@ -43,9 +43,12 @@ export default function Header() {
               <div className="px-4 py-2 text-sm text-gray-400">로딩중...</div>
             ) : isLoggedIn ? (
               <>
-                <span className="px-4 py-2 rounded-full border border-pink-300 text-black-600 text-sm font-medium transition">
+                <Link
+                  href="/mypage"
+                  className="px-4 py-2 rounded-full border border-pink-300 text-black-600 text-sm font-medium transition hover:bg-pink-50"
+                >
                   {user?.name || user?.email} 님
-                </span>
+                </Link>
                 <button
                   onClick={handleLogout}
                   className="px-4 py-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 text-sm font-medium transition cursor-pointer"

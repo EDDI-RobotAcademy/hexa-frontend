@@ -29,8 +29,8 @@ export async function apiFetch<T>(
   const url = `${API_BASE_URL}${endpoint}`;
 
   // body가 있는 경우에만 Content-Type 헤더 추가
-  const headers: HeadersInit = {
-    ...options?.headers,
+  const headers: Record<string, string> = {
+    ...(options?.headers as Record<string, string>),
   };
 
   if (options?.body) {
@@ -152,8 +152,7 @@ export async function updateProfile(
  */
 export interface StartConsultResponse {
   session_id: string;
-  initial_message: string;
-  remaining_turns: number;
+  greeting: string;
 }
 
 export async function startConsult(): Promise<StartConsultResponse> {
@@ -169,10 +168,18 @@ export interface SendMessageRequest {
   content: string;
 }
 
+export interface Analysis {
+  situation: string;
+  traits: string;
+  solutions: string;
+  cautions: string;
+}
+
 export interface SendMessageResponse {
-  ai_response: string;
+  response: string;
   remaining_turns: number;
   is_completed: boolean;
+  analysis?: Analysis;
 }
 
 export async function sendConsultMessage(
@@ -182,6 +189,27 @@ export async function sendConsultMessage(
   return apiFetch<SendMessageResponse>(`/consult/${sessionId}/message`, {
     method: 'POST',
     body: JSON.stringify({ content }),
+  });
+}
+
+/**
+ * 상담 히스토리 조회
+ */
+export interface ConsultHistorySession {
+  id: string;
+  created_at: string;
+  mbti: string;
+  gender: string;
+  analysis: Analysis | null;
+}
+
+export interface ConsultHistoryResponse {
+  sessions: ConsultHistorySession[];
+}
+
+export async function getConsultHistory(): Promise<ConsultHistoryResponse> {
+  return apiFetch<ConsultHistoryResponse>('/consult/history', {
+    method: 'GET',
   });
 }
 
