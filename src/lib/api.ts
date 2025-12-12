@@ -12,6 +12,13 @@ export interface AuthStatus {
   name?: string;
 }
 
+export interface UserProfile {
+  id: string;
+  email: string;
+  mbti: string | null;
+  gender: Gender | null;
+}
+
 /**
  * 백엔드 API 호출 (쿠키 자동 포함)
  */
@@ -91,6 +98,15 @@ export async function logout(sessionId?: string): Promise<void> {
     method: 'POST',
     credentials: 'include',
     headers,
+  });
+}
+
+/**
+ * 프로필 조회
+ */
+export async function getProfile(): Promise<UserProfile> {
+  return apiFetch<UserProfile>('/user/profile', {
+    method: 'GET',
   });
 }
 
