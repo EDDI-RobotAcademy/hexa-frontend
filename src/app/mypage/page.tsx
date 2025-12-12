@@ -1,7 +1,10 @@
-import { requireAuth } from '@/lib/auth.server';
 import MypageClient from './MypageClient';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
-export default async function MypagePage() {
-  await requireAuth();
-  return <MypageClient />;
+export default function MypagePage() {
+  return (
+    <ProtectedRoute>
+      <MypageClient />
+    </ProtectedRoute>
+  );
 }
